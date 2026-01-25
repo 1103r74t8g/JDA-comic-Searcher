@@ -3,7 +3,7 @@ package com.mybot.model;
 import java.util.Collections;
 import java.util.List;
 
-public class BookResult {
+public class Book {
     private boolean success;
     private String title;
     private String url;
@@ -17,7 +17,7 @@ public class BookResult {
     private List<String> characters;
 
     // constructor
-    public BookResult(String title, String url, String coverUrl,
+    public Book(String title, String url, String coverUrl,
             List<String> artists, List<String> groups, List<String> languages,
             List<String> tags, List<String> parodies, List<String> characters) {
         this.success = true;
@@ -32,7 +32,7 @@ public class BookResult {
         this.characters = (characters != null) ? characters : Collections.emptyList();
     }
 
-    public BookResult(String error) {
+    public Book(String error) {
         this.success = false;
         this.error = error;
         this.artists = Collections.emptyList();

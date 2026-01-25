@@ -2,7 +2,7 @@ package com.mybot.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mybot.model.BookResult;
+import com.mybot.model.Book;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,7 +18,7 @@ public class NHentaiService {
     private static final String PYTHON_SCRIPT_PATH = "crawler.py";
     private static final ObjectMapper jsonMapper = new ObjectMapper();
 
-    public BookResult search(String query) {
+    public Book search(String query) {
         try {
             ProcessBuilder pb = new ProcessBuilder(PYTHON_COMMAND, PYTHON_SCRIPT_PATH, query);
             pb.directory(new File(System.getProperty("user.dir")));
@@ -31,7 +31,7 @@ public class NHentaiService {
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 // 如果 Python 崩潰，回傳一個裝著錯誤訊息的盒子
-                return new BookResult("Python 腳本執行錯誤");
+                return new Book("Python 腳本執行錯誤");
             }
 
             // 解析 JSON
@@ -50,15 +50,15 @@ public class NHentaiService {
                 List<String> parodies = jsonToList(rootNode, "parodies");
                 List<String> characters = jsonToList(rootNode, "characters");
 
-                // 回傳新版的 BookResult
-                return new BookResult(title, url, cover, artists, groups, languages, tags, parodies, characters);
+                // 回傳新版的 Book
+                return new Book(title, url, cover, artists, groups, languages, tags, parodies, characters);
             } else {
-                return new BookResult(rootNode.get("error").asText());
+                return new Book(rootNode.get("error").asText());
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            return new BookResult("Java 內部錯誤: " + e.getMessage());
+            return new Book("Java 內部錯誤: " + e.getMessage());
         }
     }
 

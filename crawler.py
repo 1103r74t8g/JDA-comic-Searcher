@@ -6,12 +6,14 @@ from bs4 import BeautifulSoup
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
 
 def search_nhentai(query):
-    # 判斷是 ID 還是關鍵字
+    # ID search
     if query.isdigit():
         url = f"https://nhentai.net/g/{query}/"
+    # Keyword search
+    
     else:
         # 這裡簡化，先示範 ID 搜尋，關鍵字搜尋邏輯類似
-        return {"error": "目前 Python 腳本僅支援 ID 搜尋"}
+        return {"success": False, "error": "query search error"}
 
     try:
         response = scraper.get(url)

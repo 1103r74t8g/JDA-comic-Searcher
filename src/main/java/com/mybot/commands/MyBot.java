@@ -3,8 +3,10 @@ package com.mybot.commands;
 import java.awt.Color;
 import java.util.stream.Collectors;
 
-import com.mybot.model.BookResult;
+import com.mybot.model.Book;
+import com.mybot.service.JsonStorageService;
 import com.mybot.service.NHentaiService;
+import com.mybot.model.UserData;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -15,8 +17,12 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
 public class MyBot extends ListenerAdapter {
+    private final JsonStorageService storageService = new JsonStorageService();
+    private final NHentaiService nhService = new NHentaiService();
 
     public static void main(String[] args) throws InterruptedException {
         Dotenv dotenv = Dotenv.load();
@@ -40,8 +46,7 @@ public class MyBot extends ListenerAdapter {
                         .addOption(OptionType.STRING, "keyword", "the keyword to search", true),
                 Commands.slash("random", "get a random one")
 
-        )
-                .queue();
+        ).queue();
 
         System.out.println("successfully started bot");
     }
@@ -69,6 +74,67 @@ public class MyBot extends ListenerAdapter {
         }
     }
 
+    @Override
+    public void onButtonInteraction(ButtonInteractionEvent event) {
+        String componentId = event.getComponentId();
+        String userId = event.getUser().getId();
+        UserData user = storageService.getUser(userId);
+
+        // ==========================
+        // save book botton
+        // ==========================
+        if (componentId.startsWith("save:")) {
+            String bookId = componentId.split(":")[1];
+
+            // condition A: originally blocked -> move to saved
+            if (user.isBookBlocked(bookId)) {
+                user.removeBlockedBook(bookId);
+                user.addSavedBook(bookId);
+                storageService.saveDatabase();
+
+                event.reply("🔄 (ID: " + bookId + ") was removed from blocked list and added to saved list!")
+                        .setEphemeral(true).queue();
+            }
+            // condition B: already saved
+            else if (user.isBookSaved(bookId)) {
+                event.reply("⚠️ You already saved this book!").setEphemeral(true).queue();
+            }
+            // condition C: normal save
+            else {
+                user.addSavedBook(bookId);
+                storageService.saveDatabase();
+                event.reply("✅ Successfully saved ID: **" + bookId + "**").setEphemeral(true).queue();
+            }
+        }
+
+        // ==========================
+        // block book button
+        // ==========================
+        else if (componentId.startsWith("block:")) {
+            String bookId = componentId.split(":")[1];
+
+            // condition A: originally saved -> move to blocked
+            if (user.isBookSaved(bookId)) {
+                user.removeSavedBook(bookId);
+                user.addBlockedBook(bookId);
+                storageService.saveDatabase();
+
+                event.reply("🔄 (ID: " + bookId + ") was removed from saved list and added to blocked list!")
+                        .setEphemeral(true).queue();
+            }
+            // condition B: already blocked
+            else if (user.isBookBlocked(bookId)) {
+                event.reply("⚠️ You already blocked this book!").setEphemeral(true).queue();
+            }
+            // condition C: normal block
+            else {
+                user.addBlockedBook(bookId);
+                storageService.saveDatabase();
+                event.reply("🚫 Successfully blocked ID: **" + bookId + "**").setEphemeral(true).queue();
+            }
+        }
+    }
+
     private void ping(SlashCommandInteractionEvent event) {
 
         event.reply("Pong! delay: " + event.getJDA().getGatewayPing() + "ms")
@@ -87,15 +153,11 @@ public class MyBot extends ListenerAdapter {
         String number = event.getOption("number").getAsString();
         event.deferReply().queue();// bot is thinking
 
-        // 3. 在背景執行搜尋
-        // 這裡使用了 thread (執行緒) 概念，雖然 JDA 的 deferReply 已經爭取了 15 分鐘，
-        // 但為了不卡住機器人主執行緒，正規做法還是建議分開，不過目前先簡單寫：
-        NHentaiService nhService = new NHentaiService();
-        BookResult result = nhService.search(number);
+        // call nhService to search
+        Book book = nhService.search(number);
 
-        // 4. 回傳結果
-        // 注意：因為剛剛用了 deferReply()，這裡要用 getHook().sendMessage()
-        embedResult(event, result);
+        // call embedResult to send embed message
+        embedResult(event, book);
     }
 
     private void searchByKeyword(SlashCommandInteractionEvent event) {
@@ -106,58 +168,71 @@ public class MyBot extends ListenerAdapter {
         // Implementation can be added similarly to searchByNumber
     }
 
-    private void embedResult(SlashCommandInteractionEvent event, BookResult result) {
-        if (result.isSuccess()) {
+    private void embedResult(SlashCommandInteractionEvent event, Book book) {
+        if (book.isSuccess()) {
             EmbedBuilder embed = new EmbedBuilder();
             embed.setColor(Color.decode("#ED2553"));
 
             // nhentai icon
-            embed.setAuthor("nhentai", result.getUrl(), "https://i.imgur.com/uLAimaY.png");
+            embed.setAuthor("nhentai", book.getUrl(), "https://i.imgur.com/uLAimaY.png");
 
-            embed.setTitle(result.getTitle(), result.getUrl());
+            embed.setTitle(book.getTitle(), book.getUrl());
 
-            embed.addField("#️⃣ ID", extractIdFromUrl(result.getUrl()), true);
+            String id = extractIdFromUrl(book.getUrl());
+            embed.addField("#️⃣ ID", id, true);
             // language
-            if (!result.getLanguages().isEmpty()) {
+            if (!book.getLanguages().isEmpty()) {
                 String langStr;
-                if (result.getLanguages().contains("translated") && result.getLanguages().size() > 1) {
-                    langStr = result.getLanguages().get(1); // skip "translated"
+                if (book.getLanguages().contains("translated") && book.getLanguages().size() > 1) {
+                    langStr = book.getLanguages().get(1); // skip "translated"
                 } else {
-                    langStr = String.join(", ", result.getLanguages());
+                    langStr = String.join(", ", book.getLanguages());
                 }
                 embed.addField("🌐 Language", langStr, true);
             }
 
-            // 3. 處理原作 (Parody) 與 角色 (Character)
-            if (!result.getParodies().isEmpty()) {
-                String parodyStr = String.join(", ", result.getParodies());
+            // parody
+            if (!book.getParodies().isEmpty()) {
+                String parodyStr = String.join(", ", book.getParodies());
                 embed.addField("🎬 Parody", parodyStr, true);
             }
 
-            // 4. 處理屬性 (Tags) - 放在最下面獨佔一行
-            if (!result.getTags().isEmpty()) {
+            // tags
+            if (!book.getTags().isEmpty()) {
                 // 這裡只取前 15 個，避免 Discord 顯示錯誤
-                String tagsStr = result.getTags().stream().limit(15).collect(Collectors.joining(", "));
-                if (result.getTags().size() > 15)
+                String tagsStr = book.getTags().stream().limit(15).collect(Collectors.joining(", "));
+                if (book.getTags().size() > 15)
                     tagsStr += " ...";
                 embed.addField("🏷️ Tags", tagsStr, false);
             }
             // artist
-            if (!result.getArtists().isEmpty()) {
-                String artist = String.join(", ", result.getArtists());
+            if (!book.getArtists().isEmpty()) {
+                String artist = String.join(", ", book.getArtists());
                 embed.addField("🎨 Artist", artist, true);
             }
 
-            embed.setImage(result.getCoverUrl());
+            embed.setImage(book.getCoverUrl());
 
-            event.getHook().sendMessageEmbeds(embed.build()).queue();
+            // --- ★ 新增按鈕邏輯 ★ ---
+
+            // save button
+            Button saveButton = Button.primary("save:" + id, "❤️ save this book");
+
+            // block button
+            Button blockButton = Button.primary("block:" + id, "🚫 block this book");
+            // link button
+            Button linkButton = Button.link(book.getUrl(), "🔗 open link");
+
+            // 3. 送出時掛載按鈕 (addActionRow)
+            event.getHook().sendMessageEmbeds(embed.build())
+                    .addActionRow(saveButton, blockButton, linkButton)
+                    .queue();
 
         } else {
-            // 失敗時保持紅色警告
             EmbedBuilder errorEmbed = new EmbedBuilder();
             errorEmbed.setColor(Color.RED);
-            errorEmbed.setTitle("❌ 搜尋失敗");
-            errorEmbed.setDescription(result.getError());
+            errorEmbed.setTitle("❌ not found");
+            errorEmbed.setDescription(book.getError());
             event.getHook().sendMessageEmbeds(errorEmbed.build()).queue();
         }
     }
