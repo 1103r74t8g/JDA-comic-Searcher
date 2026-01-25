@@ -76,62 +76,116 @@ public class MyBot extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
-        String componentId = event.getComponentId();
+        // split String like "save:123456" into ["save", "123456"] = [action, bookId]
+        String[] parts = event.getComponentId().split(":");
+        String action = parts[0];
+        String bookId = parts.length > 1 ? parts[1] : "";
+
         String userId = event.getUser().getId();
         UserData user = storageService.getUser(userId);
 
-        // ==========================
-        // save book botton
-        // ==========================
-        if (componentId.startsWith("save:")) {
-            String bookId = componentId.split(":")[1];
-
-            // condition A: originally blocked -> move to saved
-            if (user.isBookBlocked(bookId)) {
-                user.removeBlockedBook(bookId);
-                user.addSavedBook(bookId);
-                storageService.saveDatabase();
-
-                event.reply("🔄 (ID: " + bookId + ") was removed from blocked list and added to saved list!")
-                        .setEphemeral(true).queue();
-            }
-            // condition B: already saved
-            else if (user.isBookSaved(bookId)) {
-                event.reply("⚠️ You already saved this book!").setEphemeral(true).queue();
-            }
-            // condition C: normal save
-            else {
-                user.addSavedBook(bookId);
-                storageService.saveDatabase();
-                event.reply("✅ Successfully saved ID: **" + bookId + "**").setEphemeral(true).queue();
-            }
+        switch (action) {
+            case "save":
+                handleSave(event, user, bookId);
+                break;
+            case "block":
+                handleBlock(event, user, bookId);
+                break;
+            case "undo_save":
+                handleUndoSave(event, user, bookId);
+                break;
+            case "undo_block":
+                handleUndoBlock(event, user, bookId);
+                break;
+            default:
+                event.reply("❌ Unknown action").setEphemeral(true).queue();
         }
+    }
 
-        // ==========================
-        // block book button
-        // ==========================
-        else if (componentId.startsWith("block:")) {
-            String bookId = componentId.split(":")[1];
+    // --- Helper Methods for Button Actions ---
 
-            // condition A: originally saved -> move to blocked
-            if (user.isBookSaved(bookId)) {
-                user.removeSavedBook(bookId);
-                user.addBlockedBook(bookId);
-                storageService.saveDatabase();
+    private void handleSave(ButtonInteractionEvent event, UserData user, String bookId) {
+        // Condition A: Originally blocked -> Move to saved
+        if (user.isBookBlocked(bookId)) {
+            user.removeBlockedBook(bookId);
+            user.addSavedBook(bookId);
+            storageService.saveDatabase();
 
-                event.reply("🔄 (ID: " + bookId + ") was removed from saved list and added to blocked list!")
-                        .setEphemeral(true).queue();
-            }
-            // condition B: already blocked
-            else if (user.isBookBlocked(bookId)) {
-                event.reply("⚠️ You already blocked this book!").setEphemeral(true).queue();
-            }
-            // condition C: normal block
-            else {
-                user.addBlockedBook(bookId);
-                storageService.saveDatabase();
-                event.reply("🚫 Successfully blocked ID: **" + bookId + "**").setEphemeral(true).queue();
-            }
+            event.reply("🔄 (ID: " + bookId + ") was removed from blocked list and added to saved list!")
+                    .setEphemeral(true).queue();
+        }
+        // Condition B: Already saved
+        else if (user.isBookSaved(bookId)) {
+            event.reply("⚠️ You already saved this book!").setEphemeral(true).queue();
+        }
+        // Condition C: Normal save
+        else {
+            user.addSavedBook(bookId);
+            storageService.saveDatabase();
+
+            // undo button
+            Button undoButton = Button.danger("undo_save:" + bookId, "↩️ Undo Save");
+
+            event.reply("✅ Successfully saved ID: **" + bookId + "**")
+                    .setEphemeral(true)
+                    .addActionRow(undoButton)
+                    .queue();
+        }
+    }
+
+    private void handleBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+        // Condition A: Originally saved -> Move to blocked
+        if (user.isBookSaved(bookId)) {
+            user.removeSavedBook(bookId);
+            user.addBlockedBook(bookId);
+            storageService.saveDatabase();
+
+            event.reply("🔄 (ID: " + bookId + ") was removed from saved list and added to blocked list!")
+                    .setEphemeral(true).queue();
+        }
+        // Condition B: Already blocked
+        else if (user.isBookBlocked(bookId)) {
+            event.reply("⚠️ You already blocked this book!").setEphemeral(true).queue();
+        }
+        // Condition C: Normal block
+        else {
+            user.addBlockedBook(bookId);
+            storageService.saveDatabase();
+
+            // undo button
+            Button undoBlockButton = Button.success("undo_block:" + bookId, "↩️ Undo Block"); // 用綠色代表「解鎖」
+
+            event.reply("🚫 Successfully blocked ID: **" + bookId + "**")
+                    .setEphemeral(true)
+                    .addActionRow(undoBlockButton)
+                    .queue();
+        }
+    }
+
+    // edit message to show undo save or block
+    private void handleUndoSave(ButtonInteractionEvent event, UserData user, String bookId) {
+        if (user.isBookSaved(bookId)) {
+            user.removeSavedBook(bookId);
+            storageService.saveDatabase();
+
+            event.editMessage("🗑️ Save cancelled (ID: " + bookId + ")")
+                    .setComponents()
+                    .queue();
+        } else {
+            event.reply("⚠️ It's not in your saved list.").setEphemeral(true).queue();
+        }
+    }
+
+    private void handleUndoBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+        if (user.isBookBlocked(bookId)) {
+            user.removeBlockedBook(bookId);
+            storageService.saveDatabase();
+
+            event.editMessage("🕊️ Block cancelled (ID: " + bookId + ")")
+                    .setComponents()
+                    .queue();
+        } else {
+            event.reply("⚠️ It's not in your blocked list.").setEphemeral(true).queue();
         }
     }
 
@@ -199,7 +253,7 @@ public class MyBot extends ListenerAdapter {
 
             // tags
             if (!book.getTags().isEmpty()) {
-                // 這裡只取前 15 個，避免 Discord 顯示錯誤
+                // only show first 15 tags
                 String tagsStr = book.getTags().stream().limit(15).collect(Collectors.joining(", "));
                 if (book.getTags().size() > 15)
                     tagsStr += " ...";
@@ -213,17 +267,17 @@ public class MyBot extends ListenerAdapter {
 
             embed.setImage(book.getCoverUrl());
 
-            // --- ★ 新增按鈕邏輯 ★ ---
+            // --- buttons under embed ---
 
             // save button
             Button saveButton = Button.primary("save:" + id, "❤️ save this book");
 
             // block button
-            Button blockButton = Button.primary("block:" + id, "🚫 block this book");
+            Button blockButton = Button.danger("block:" + id, "🚫 block this book");
             // link button
             Button linkButton = Button.link(book.getUrl(), "🔗 open link");
 
-            // 3. 送出時掛載按鈕 (addActionRow)
+            // send embed with buttons
             event.getHook().sendMessageEmbeds(embed.build())
                     .addActionRow(saveButton, blockButton, linkButton)
                     .queue();
