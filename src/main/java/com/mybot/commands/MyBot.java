@@ -105,28 +105,43 @@ public class MyBot extends ListenerAdapter {
     // --- Helper Methods for Button Actions ---
 
     private void handleSave(ButtonInteractionEvent event, UserData user, String bookId) {
+        EmbedBuilder embed = new EmbedBuilder();
+
         // Condition A: Originally blocked -> Move to saved
         if (user.isBookBlocked(bookId)) {
             user.removeBlockedBook(bookId);
             user.addSavedBook(bookId);
             storageService.saveDatabase();
 
-            event.reply("🔄 (ID: " + bookId + ") was removed from blocked list and added to saved list!")
-                    .setEphemeral(true).queue();
+            embed.setColor(Color.ORANGE);
+            embed.setTitle("🔄 updated");
+            embed.setDescription("removed from **blocked list** and added to **saved list**.");
+            embed.setFooter("ID: " + bookId);
+
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
         }
         // Condition B: Already saved
         else if (user.isBookSaved(bookId)) {
-            event.reply("⚠️ You already saved this book!").setEphemeral(true).queue();
+            embed.setColor(Color.YELLOW);
+            embed.setTitle("⚠️ already saved");
+            embed.setDescription("This book is already in your saved list!");
+
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
         }
         // Condition C: Normal save
         else {
             user.addSavedBook(bookId);
             storageService.saveDatabase();
 
-            // undo button
+            embed.setColor(Color.GREEN);
+            embed.setTitle("❤️ saved");
+            embed.setDescription("Successfully added to your saved list!");
+            embed.setFooter("ID: " + bookId);
+
             Button undoButton = Button.danger("undo_save:" + bookId, "↩️ Undo Save");
 
-            event.reply("✅ Successfully saved ID: **" + bookId + "**")
+            // reply by Embeds
+            event.replyEmbeds(embed.build())
                     .setEphemeral(true)
                     .addActionRow(undoButton)
                     .queue();
@@ -134,28 +149,41 @@ public class MyBot extends ListenerAdapter {
     }
 
     private void handleBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+        EmbedBuilder embed = new EmbedBuilder();
+
         // Condition A: Originally saved -> Move to blocked
         if (user.isBookSaved(bookId)) {
             user.removeSavedBook(bookId);
             user.addBlockedBook(bookId);
             storageService.saveDatabase();
 
-            event.reply("🔄 (ID: " + bookId + ") was removed from saved list and added to blocked list!")
-                    .setEphemeral(true).queue();
+            embed.setColor(Color.ORANGE);
+            embed.setTitle("🔄 updated");
+            embed.setDescription("removed from **saved list** and added to **blocked list**.");
+            embed.setFooter("ID: " + bookId);
+
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
         }
         // Condition B: Already blocked
         else if (user.isBookBlocked(bookId)) {
-            event.reply("⚠️ You already blocked this book!").setEphemeral(true).queue();
+            embed.setColor(Color.YELLOW);
+            embed.setTitle("⚠️ already blocked");
+            embed.setDescription("This book is already in your blocked list!");
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
         }
         // Condition C: Normal block
         else {
             user.addBlockedBook(bookId);
             storageService.saveDatabase();
 
-            // undo button
-            Button undoBlockButton = Button.success("undo_block:" + bookId, "↩️ Undo Block"); // 用綠色代表「解鎖」
+            embed.setColor(Color.RED);
+            embed.setTitle("🚫 blocked");
+            embed.setDescription("This book is now blocked and will not appear in recommendations.");
+            embed.setFooter("ID: " + bookId);
 
-            event.reply("🚫 Successfully blocked ID: **" + bookId + "**")
+            Button undoBlockButton = Button.success("undo_block:" + bookId, "↩️ Undo Block");
+
+            event.replyEmbeds(embed.build())
                     .setEphemeral(true)
                     .addActionRow(undoBlockButton)
                     .queue();
@@ -164,11 +192,17 @@ public class MyBot extends ListenerAdapter {
 
     // edit message to show undo save or block
     private void handleUndoSave(ButtonInteractionEvent event, UserData user, String bookId) {
+        EmbedBuilder embed = new EmbedBuilder();
+
         if (user.isBookSaved(bookId)) {
             user.removeSavedBook(bookId);
             storageService.saveDatabase();
 
-            event.editMessage("🗑️ Save cancelled (ID: " + bookId + ")")
+            embed.setColor(Color.DARK_GRAY);
+            embed.setTitle("🗑️ Unsaved");
+            embed.setDescription("ID: " + bookId + " was removed from your saved list.");
+
+            event.editMessageEmbeds(embed.build())
                     .setComponents()
                     .queue();
         } else {
@@ -177,11 +211,17 @@ public class MyBot extends ListenerAdapter {
     }
 
     private void handleUndoBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+        EmbedBuilder embed = new EmbedBuilder();
+
         if (user.isBookBlocked(bookId)) {
             user.removeBlockedBook(bookId);
             storageService.saveDatabase();
 
-            event.editMessage("🕊️ Block cancelled (ID: " + bookId + ")")
+            embed.setColor(Color.DARK_GRAY);
+            embed.setTitle("🕊️ UnBlocked");
+            embed.setDescription("ID: " + bookId + " was removed from your blocked list.");
+
+            event.editMessageEmbeds(embed.build())
                     .setComponents()
                     .queue();
         } else {
