@@ -1,0 +1,13 @@
+
+.env
+target/
+*.class
+.vscode/
+.settings/
+.classpath
+.project
+
+__pycache__/
+*.pyc
+
+.DS_Store
