@@ -54,6 +54,7 @@ public class MyBot extends ListenerAdapter {
                                                 "Week's Popular", "popular-week")
                                         .addChoice("Most Recent", "recent")),
                 Commands.slash("random", "get a random one"),
+                Commands.slash("recent-uploads", "Get a random book from the newest uploads"),
                 Commands.slash("save-list", "view your saved list")).queue();
 
         System.out.println("successfully started bot");
@@ -76,6 +77,9 @@ public class MyBot extends ListenerAdapter {
                 break;
             case "random":
                 random(event);
+                break;
+            case "recent-uploads":
+                recentUploads(event);
                 break;
             case "save-list":
                 saveList(event);
@@ -287,6 +291,16 @@ public class MyBot extends ListenerAdapter {
 
     private void random(SlashCommandInteractionEvent event) {
         // Implementation can be added similarly to searchByNumber
+    }
+
+    private void recentUploads(SlashCommandInteractionEvent event) {
+        event.deferReply().queue();// bot is thinking
+
+        // call nhService to search
+        Book book = nhService.search("recent-uploads");
+
+        // call embedResult to send embed message
+        embedResult(event, book);
     }
 
     private void saveList(SlashCommandInteractionEvent event) {

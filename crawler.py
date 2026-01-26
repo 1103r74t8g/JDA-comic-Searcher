@@ -14,7 +14,7 @@ def search_nhentai(query):
     # ==========================================
     # 模式 1: 抓取最新 (CMD_RECENT)
     # ==========================================
-    if query == "CMD_RECENT":
+    if query == "recent-uploads":
         # 直接去首頁抓取
         search_url = "https://nhentai.net/"
         
@@ -25,7 +25,7 @@ def search_nhentai(query):
                 all_results = search_soup.select('.gallery a.cover')
                 
                 if all_results:
-                    # 從首頁的 25 本中隨機抽一本
+                    # 從最新結果中隨機抽一本
                     random_entry = random.choice(all_results)
                     if 'href' in random_entry.attrs:
                         target_url = "https://nhentai.net" + random_entry['href']
