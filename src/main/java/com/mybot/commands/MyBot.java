@@ -41,7 +41,6 @@ public class MyBot extends ListenerAdapter {
         // add slash commands here
         jda.updateCommands().addCommands(
                 Commands.slash("ping", "delay"), // name, description
-                Commands.slash("hello", "say hello"),
                 Commands.slash("search-by-number", "look up a specific one by number")
                         .addOption(OptionType.STRING, "number", "the number of the nhentai", true),
                 Commands.slash("search-by-keyword", "look up by keyword with sorting")
@@ -55,8 +54,13 @@ public class MyBot extends ListenerAdapter {
                                         .addChoice("Most Recent", "recent")),
                 Commands.slash("random", "get a random one"),
                 Commands.slash("recent-uploads", "Get a random book from the newest uploads"),
-                Commands.slash("save-list", "view your saved list")).queue();
+                Commands.slash("save-list", "view your saved list"),
+                Commands.slash("block-tag", "Add a tag to your block list (one each time)")
+                        .addOption(OptionType.STRING, "tag", "The tag name (e.g., yaoi, guro)", true),
+                Commands.slash("unblock-tag", "Remove a tag from your block list (one each time)")
+                        .addOption(OptionType.STRING, "tag", "The tag name (e.g., yaoi, guro)", true)
 
+        ).queue();
         System.out.println("successfully started bot");
     }
 
@@ -65,9 +69,6 @@ public class MyBot extends ListenerAdapter {
         switch (event.getName()) {
             case "ping":
                 ping(event);
-                break;
-            case "hello":
-                hello(event);
                 break;
             case "search-by-number":
                 searchByNumber(event);
@@ -83,6 +84,12 @@ public class MyBot extends ListenerAdapter {
                 break;
             case "save-list":
                 saveList(event);
+                break;
+            case "block-tag":
+                blockTag(event);
+                break;
+            case "unblock-tag":
+                unblockTag(event);
                 break;
             default:
                 break;
@@ -245,17 +252,14 @@ public class MyBot extends ListenerAdapter {
     }
 
     private void ping(SlashCommandInteractionEvent event) {
+        long ping = event.getJDA().getGatewayPing();
 
-        event.reply("Pong! delay: " + event.getJDA().getGatewayPing() + "ms")
-                .setEphemeral(true)
-                .queue();
-    }
+        EmbedBuilder embed = new EmbedBuilder();
+        embed.setColor(Color.green);
+        embed.setTitle("Pong!");
+        embed.setDescription("delay: **" + ping + " ms**");
 
-    private void hello(SlashCommandInteractionEvent event) {
-        String userName = event.getUser().getName();
-        event.reply("Hello, " + userName + "!")
-                .setEphemeral(true)
-                .queue();
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
     }
 
     private void searchByNumber(SlashCommandInteractionEvent event) {
@@ -272,7 +276,11 @@ public class MyBot extends ListenerAdapter {
     private void searchByKeyword(SlashCommandInteractionEvent event) {
         String keyword = event.getOption("keyword").getAsString();
 
-        // all time popular as default
+        // 1. user data for Blocked Tags
+        String userId = event.getUser().getId();
+        UserData user = storageService.getUser(userId);
+
+        // 2. get sort option
         String sort = "popular";
         if (event.getOption("sort-by") != null) {
             sort = event.getOption("sort-by").getAsString();
@@ -280,9 +288,11 @@ public class MyBot extends ListenerAdapter {
 
         event.deferReply().queue();
 
-        // send to service
-        // ex： "chinese###popular-today"
-        String query = keyword + "###" + sort;
+        // 3. Build search query with blocked tags
+        String filteredKeyword = buildFilteredQuery(keyword, user);
+
+        // ex : "keyword -tag:\"yaoi\"###popular"
+        String query = filteredKeyword + "###" + sort;
 
         Book book = nhService.search(query);
 
@@ -294,12 +304,27 @@ public class MyBot extends ListenerAdapter {
     }
 
     private void recentUploads(SlashCommandInteractionEvent event) {
-        event.deferReply().queue();// bot is thinking
+        String userId = event.getUser().getId();
+        UserData user = storageService.getUser(userId);
 
-        // call nhService to search
-        Book book = nhService.search("recent-uploads");
+        event.deferReply().queue();
 
-        // call embedResult to send embed message
+        // if no block list -> "?"
+        // else -> " -tag:\"yaoi\""
+        String filteredKeyword = "?";
+        if (user.getBlockedTags().isEmpty()) {
+            // no blocked tags, just search recent uploads
+            filteredKeyword = "?";
+        } else {
+            // has blocked tags, need to filter
+            filteredKeyword = buildFilteredQuery("", user);
+        }
+
+        // ex : " -tag:\"yaoi\"###recent"
+        String query = filteredKeyword + "###recent";
+
+        Book book = nhService.search(query);
+
         embedResult(event, book);
     }
 
@@ -307,6 +332,74 @@ public class MyBot extends ListenerAdapter {
         // Implementation can be added to show user's saved list
     }
 
+    private void blockTag(SlashCommandInteractionEvent event) {
+        String tag = event.getOption("tag").getAsString().trim().toLowerCase();
+        String userId = event.getUser().getId();
+        UserData user = storageService.getUser(userId);
+
+        EmbedBuilder embed = new EmbedBuilder();
+        if (user.isTagBlocked(tag)) {
+            embed.setColor(Color.YELLOW);
+            embed.setTitle("⚠️ Already Blocked");
+            embed.setDescription("Tag **" + tag + "** is already in your blocked list.");
+
+            // Reply with Embed
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+            return;
+        }
+
+        // 3. Add to blocked list and save
+        user.addBlockedTag(tag);
+        storageService.saveDatabase();
+
+        // 4. Build success blocked Embed
+        embed.setColor(Color.RED); // Red represents blocked
+        embed.setTitle("Successfully Blocked");
+        embed.setDescription("Tag **" + tag + "** has been blocked.");
+        embed.setFooter("Future searches and recommends will filter out works containing this tag.");
+
+        // Reply with Embed
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+
+    private void unblockTag(SlashCommandInteractionEvent event) {
+        String tag = event.getOption("tag").getAsString().trim().toLowerCase();
+        String userId = event.getUser().getId();
+        UserData user = storageService.getUser(userId);
+
+        EmbedBuilder embed = new EmbedBuilder();
+        if (!user.isTagBlocked(tag)) {
+            embed.setColor(Color.YELLOW);
+            embed.setTitle("⚠️ Not Blocked");
+            embed.setDescription("Tag **" + tag + "** is not in your blocked list.");
+
+            // Reply with Embed
+            event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+            return;
+        }
+        // 3. Remove from blocked list and save
+        user.removeBlockedTag(tag);
+        storageService.saveDatabase();
+        // 4. Build success unblocked Embed
+        embed.setColor(Color.GREEN); // Green represents unblocked
+        embed.setTitle("Successfully Unblocked");
+        embed.setDescription("Tag **" + tag + "** has been unblocked.");
+
+        // Reply with Embed
+        event.replyEmbeds(embed.build()).setEphemeral(true).queue();
+    }
+
+    // --- Helper Methods for Building Query ---
+    // build filtered query with user's blocked tags
+    private String buildFilteredQuery(String keyword, UserData user) {
+        StringBuilder sb = new StringBuilder(keyword);
+        for (String tag : user.getBlockedTags()) {
+            sb.append(" -tag:\"").append(tag).append("\"");
+        }
+        return sb.toString().trim();
+    }
+
+    // embed the result book into Discord message
     private void embedResult(SlashCommandInteractionEvent event, Book book) {
         if (book.isSuccess()) {
             EmbedBuilder embed = new EmbedBuilder();
@@ -349,7 +442,7 @@ public class MyBot extends ListenerAdapter {
                 String artist = String.join(", ", book.getArtists());
                 embed.addField("🎨 Artist", artist, true);
             }
-            // date added(have not implemented yet)
+            // date added(have not implemented yet and not crawled from python)
             /*
              * if (book.getUploadDate() != null && !book.getUploadDate().isEmpty()) {
              * embed.addField("📅 Added on", book.getUploadDate(), true);
