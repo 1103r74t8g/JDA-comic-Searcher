@@ -30,11 +30,10 @@ public class NHentaiService {
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                // 如果 Python 崩潰，回傳一個裝著錯誤訊息的盒子
-                return new Book("Python 腳本執行錯誤");
+                // python problem
+                return new Book("Python error with exit code: " + exitCode);
             }
 
-            // 解析 JSON
             JsonNode rootNode = jsonMapper.readTree(jsonOutput);
 
             if (rootNode.get("success").asBoolean()) {
@@ -42,7 +41,7 @@ public class NHentaiService {
                 String url = rootNode.get("url").asText();
                 String cover = rootNode.get("cover").asText();
 
-                // 抽取分類的 Helper 方法 (下面定義)
+                // make lists for every category
                 List<String> artists = jsonToList(rootNode, "artists");
                 List<String> groups = jsonToList(rootNode, "groups");
                 List<String> languages = jsonToList(rootNode, "languages");
@@ -50,7 +49,7 @@ public class NHentaiService {
                 List<String> parodies = jsonToList(rootNode, "parodies");
                 List<String> characters = jsonToList(rootNode, "characters");
 
-                // 回傳新版的 Book
+                // return the Book
                 return new Book(title, url, cover, artists, groups, languages, tags, parodies, characters);
             } else {
                 return new Book(rootNode.get("error").asText());
@@ -58,7 +57,7 @@ public class NHentaiService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return new Book("Java 內部錯誤: " + e.getMessage());
+            return new Book("Java error: " + e.getMessage());
         }
     }
 

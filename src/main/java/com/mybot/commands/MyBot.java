@@ -1,6 +1,7 @@
 package com.mybot.commands;
 
 import java.awt.Color;
+import java.awt.List;
 import java.util.stream.Collectors;
 
 import com.mybot.model.Book;
@@ -17,6 +18,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
@@ -42,11 +44,17 @@ public class MyBot extends ListenerAdapter {
                 Commands.slash("hello", "say hello"),
                 Commands.slash("search-by-number", "look up a specific one by number")
                         .addOption(OptionType.STRING, "number", "the number of the nhentai", true),
-                Commands.slash("search-by-keyword", "look up by keyword")
-                        .addOption(OptionType.STRING, "keyword", "the keyword to search", true),
-                Commands.slash("random", "get a random one")
-
-        ).queue();
+                Commands.slash("search-by-keyword", "look up by keyword with sorting")
+                        .addOption(OptionType.STRING, "keyword", "the keyword to search", true)
+                        .addOptions(
+                                new OptionData(OptionType.STRING, "sort-by", "select time range", true)
+                                        .addChoice("All Time Popular", "popular")
+                                        .addChoice("Today's Popular", "popular-today")
+                                        .addChoice(
+                                                "Week's Popular", "popular-week")
+                                        .addChoice("Most Recent", "recent")),
+                Commands.slash("random", "get a random one"),
+                Commands.slash("save-list", "view your saved list")).queue();
 
         System.out.println("successfully started bot");
     }
@@ -68,6 +76,9 @@ public class MyBot extends ListenerAdapter {
                 break;
             case "random":
                 random(event);
+                break;
+            case "save-list":
+                saveList(event);
                 break;
             default:
                 break;
@@ -255,11 +266,31 @@ public class MyBot extends ListenerAdapter {
     }
 
     private void searchByKeyword(SlashCommandInteractionEvent event) {
-        // Implementation can be added similarly to searchByNumber
+        String keyword = event.getOption("keyword").getAsString();
+
+        // all time popular as default
+        String sort = "popular";
+        if (event.getOption("sort-by") != null) {
+            sort = event.getOption("sort-by").getAsString();
+        }
+
+        event.deferReply().queue();
+
+        // send to service
+        // ex： "chinese###popular-today"
+        String query = keyword + "###" + sort;
+
+        Book book = nhService.search(query);
+
+        embedResult(event, book);
     }
 
     private void random(SlashCommandInteractionEvent event) {
         // Implementation can be added similarly to searchByNumber
+    }
+
+    private void saveList(SlashCommandInteractionEvent event) {
+        // Implementation can be added to show user's saved list
     }
 
     private void embedResult(SlashCommandInteractionEvent event, Book book) {
@@ -304,6 +335,12 @@ public class MyBot extends ListenerAdapter {
                 String artist = String.join(", ", book.getArtists());
                 embed.addField("🎨 Artist", artist, true);
             }
+            // date added(have not implemented yet)
+            /*
+             * if (book.getUploadDate() != null && !book.getUploadDate().isEmpty()) {
+             * embed.addField("📅 Added on", book.getUploadDate(), true);
+             * }
+             */
 
             embed.setImage(book.getCoverUrl());
 
