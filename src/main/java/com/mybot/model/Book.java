@@ -15,11 +15,12 @@ public class Book {
     private List<String> tags;
     private List<String> parodies;
     private List<String> characters;
+    private String pages;
 
     // constructor
     public Book(String title, String url, String coverUrl,
             List<String> artists, List<String> groups, List<String> languages,
-            List<String> tags, List<String> parodies, List<String> characters) {
+            List<String> tags, List<String> parodies, List<String> characters, String pages) {
         this.success = true;
         this.title = title;
         this.url = url;
@@ -30,11 +31,13 @@ public class Book {
         this.tags = (tags != null) ? tags : Collections.emptyList();
         this.parodies = (parodies != null) ? parodies : Collections.emptyList();
         this.characters = (characters != null) ? characters : Collections.emptyList();
+        this.pages = (pages != null) ? pages : "N/A";
     }
 
     public Book(String error) {
         this.success = false;
         this.error = error;
+        this.pages = "N/A";
         this.artists = Collections.emptyList();
         this.groups = Collections.emptyList();
         this.languages = Collections.emptyList();
@@ -86,5 +89,9 @@ public class Book {
 
     public List<String> getCharacters() {
         return characters;
+    }
+
+    public String getPages() {
+        return pages;
     }
 }

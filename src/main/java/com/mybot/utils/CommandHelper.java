@@ -72,7 +72,13 @@ public class CommandHelper {
                 embed.addField("🎨 Artist", artist, true);
             }
 
-            embed.setImage(book.getCoverUrl());
+            // Pages
+            embed.addField("📄 Pages", book.getPages(), true);
+
+            // cover image
+            if (book.getCoverUrl() != null && !book.getCoverUrl().isEmpty()) {
+                embed.setImage(book.getCoverUrl());
+            }
 
             // Buttons
             Button saveButton = Button.primary("save:" + id, "❤️ Save");

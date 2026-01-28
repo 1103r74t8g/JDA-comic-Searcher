@@ -40,7 +40,11 @@ public class MyBot extends ListenerAdapter {
                         .addOption(OptionType.STRING, "number", "The nhentai ID", true),
                 Commands.slash("search-by-keyword", "Search by keyword")
                         .addOption(OptionType.STRING, "keyword", "Keywords", true)
-                        .addOptions(new OptionData(OptionType.STRING, "sort-by", "Sort order", false)
+                        .addOption(OptionType.INTEGER, "min-pages",
+                                "(Optional) Minimum pages (e.g. 20 means >= 20 pages)",
+                                false)
+                        .addOptions(new OptionData(OptionType.STRING, "sort-by",
+                                "Sort order (Optional,All Time Popular as default)", false)
                                 .addChoice("All Time Popular", "popular")
                                 .addChoice("Today's Popular", "popular-today")
                                 .addChoice("Week's Popular", "popular-week")

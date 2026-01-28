@@ -72,11 +72,17 @@ public class SlashCommandHandler {
     private void searchByKeyword(SlashCommandInteractionEvent event) {
         String keyword = event.getOption("keyword").getAsString();
 
-        // 1. user data for Blocked Tags
+        // check min-pages option
+        if (event.getOption("min-pages") != null) {
+            int minPages = event.getOption("min-pages").getAsInt();
+            keyword += " pages:>=" + minPages;
+        }
+
+        // user data for Blocked Tags
         String userId = event.getUser().getId();
         UserData user = storageService.getUser(userId);
 
-        // 2. get sort option
+        // get sort option
         String sort = "popular";
         if (event.getOption("sort-by") != null) {
             sort = event.getOption("sort-by").getAsString();
@@ -84,7 +90,7 @@ public class SlashCommandHandler {
 
         event.deferReply().queue();
 
-        // 3. Build search query with blocked tags
+        // Build search query with blocked tags
         String filteredKeyword = CommandHelper.buildFilteredQuery(keyword, user);
 
         // ex : "keyword -tag:\"yaoi\"###popular"

@@ -48,9 +48,14 @@ public class NHentaiService {
                 List<String> tags = jsonToList(rootNode, "tags");
                 List<String> parodies = jsonToList(rootNode, "parodies");
                 List<String> characters = jsonToList(rootNode, "characters");
+                List<String> pagesList = jsonToList(rootNode, "pages");
+                String pages = "N/A";
+                if (!pagesList.isEmpty()) {
+                    pages = pagesList.get(0);
+                }
 
                 // return the Book
-                return new Book(title, url, cover, artists, groups, languages, tags, parodies, characters);
+                return new Book(title, url, cover, artists, groups, languages, tags, parodies, characters, pages);
             } else {
                 return new Book(rootNode.get("error").asText());
             }
