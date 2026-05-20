@@ -1,7 +1,7 @@
 package com.mybot.handler;
 
 import com.mybot.model.Book;
-import com.mybot.model.UserData;
+import com.mybot.model.User;
 import com.mybot.service.JsonStorageService;
 import com.mybot.service.NHentaiService;
 import com.mybot.utils.CommandHelper;
@@ -80,7 +80,7 @@ public class SlashCommandHandler {
 
         // user data for Blocked Tags
         String userId = event.getUser().getId();
-        UserData user = storageService.getUser(userId);
+        User user = storageService.getUser(userId);
 
         // get sort option
         String sort = "popular";
@@ -107,7 +107,7 @@ public class SlashCommandHandler {
 
     private void recentUploads(SlashCommandInteractionEvent event) {
         String userId = event.getUser().getId();
-        UserData user = storageService.getUser(userId);
+        User user = storageService.getUser(userId);
 
         event.deferReply().queue();
 
@@ -137,7 +137,7 @@ public class SlashCommandHandler {
     private void blockTag(SlashCommandInteractionEvent event) {
         String tag = event.getOption("tag").getAsString().trim().toLowerCase();
         String userId = event.getUser().getId();
-        UserData user = storageService.getUser(userId);
+        User user = storageService.getUser(userId);
 
         EmbedBuilder embed = new EmbedBuilder();
         if (user.isTagBlocked(tag)) {
@@ -167,7 +167,7 @@ public class SlashCommandHandler {
     private void unblockTag(SlashCommandInteractionEvent event) {
         String tag = event.getOption("tag").getAsString().trim().toLowerCase();
         String userId = event.getUser().getId();
-        UserData user = storageService.getUser(userId);
+        User user = storageService.getUser(userId);
 
         EmbedBuilder embed = new EmbedBuilder();
         if (!user.isTagBlocked(tag)) {

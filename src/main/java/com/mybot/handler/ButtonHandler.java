@@ -1,6 +1,6 @@
 package com.mybot.handler;
 
-import com.mybot.model.UserData;
+import com.mybot.model.User;
 import com.mybot.service.JsonStorageService;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -21,7 +21,7 @@ public class ButtonHandler {
         String bookId = parts.length > 1 ? parts[1] : "";
 
         String userId = event.getUser().getId();
-        UserData user = storageService.getUser(userId);
+        User user = storageService.getUser(userId);
 
         switch (action) {
             case "save":
@@ -41,7 +41,7 @@ public class ButtonHandler {
         }
     }
 
-    private void handleSave(ButtonInteractionEvent event, UserData user, String bookId) {
+    private void handleSave(ButtonInteractionEvent event, User user, String bookId) {
         EmbedBuilder embed = new EmbedBuilder();
 
         // Condition A: Originally blocked -> Move to saved
@@ -85,7 +85,7 @@ public class ButtonHandler {
         }
     }
 
-    private void handleBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+    private void handleBlock(ButtonInteractionEvent event, User user, String bookId) {
         EmbedBuilder embed = new EmbedBuilder();
 
         // Condition A: Originally saved -> Move to blocked
@@ -128,7 +128,7 @@ public class ButtonHandler {
     }
 
     // edit message to show undo save or block
-    private void handleUndoSave(ButtonInteractionEvent event, UserData user, String bookId) {
+    private void handleUndoSave(ButtonInteractionEvent event, User user, String bookId) {
         EmbedBuilder embed = new EmbedBuilder();
 
         if (user.isBookSaved(bookId)) {
@@ -147,7 +147,7 @@ public class ButtonHandler {
         }
     }
 
-    private void handleUndoBlock(ButtonInteractionEvent event, UserData user, String bookId) {
+    private void handleUndoBlock(ButtonInteractionEvent event, User user, String bookId) {
         EmbedBuilder embed = new EmbedBuilder();
 
         if (user.isBookBlocked(bookId)) {

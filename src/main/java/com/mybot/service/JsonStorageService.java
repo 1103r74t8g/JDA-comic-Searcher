@@ -3,7 +3,7 @@ package com.mybot.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.mybot.model.UserData;
+import com.mybot.model.User;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,9 +19,9 @@ public class JsonStorageService {
     private final ObjectMapper mapper = new ObjectMapper();
 
     // 快取 (Cache)：這是我們的「記憶體資料庫」
-    // 結構是：Map<User ID, UserData物件>
+    // 結構是：Map<User ID, User物件>
     // 這樣我們要找某個使用者的資料時，不用讀硬碟，直接從這裡拿，速度最快
-    private Map<String, UserData> userCache;
+    private Map<String, User> userCache;
 
     public JsonStorageService() {
         // 設定：輸出的 JSON 要自動換行縮排 (讓人眼看得懂)
@@ -34,9 +34,9 @@ public class JsonStorageService {
     // --- 核心功能 ---
 
     // 1. 取得使用者資料 (如果他是第一次來，就自動幫他開戶)
-    public UserData getUser(String userId) {
+    public User getUser(String userId) {
         // putIfAbsent: 如果 Map 裡沒這個人，就 new 一個新的放進去
-        userCache.putIfAbsent(userId, new UserData(userId));
+        userCache.putIfAbsent(userId, new User(userId));
         return userCache.get(userId);
     }
 
@@ -65,8 +65,8 @@ public class JsonStorageService {
         }
 
         try {
-            // readValue 比較複雜，因為 Map 裡面包著 UserData，要用 TypeReference 告訴 Jackson 結構
-            userCache = mapper.readValue(file, new TypeReference<Map<String, UserData>>() {
+            // readValue 比較複雜，因為 Map 裡面包著 User，要用 TypeReference 告訴 Jackson 結構
+            userCache = mapper.readValue(file, new TypeReference<Map<String, User>>() {
             });
             System.out.println("📂 資料庫載入成功，目前有 " + userCache.size() + " 位使用者的資料。");
         } catch (IOException e) {

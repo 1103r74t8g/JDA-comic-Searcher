@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class Book {
-    private boolean success;
+    private boolean success;// Indicates if the book was successfully retrieved
     private String title;
     private String url;
     private String coverUrl;

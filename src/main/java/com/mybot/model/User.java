@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 // data class to store user data
-public class UserData {
+public class User {
     private String userId; // Discord User ID
     private Set<String> savedBooks; // set of saved book IDs (set no duplicates)
     private Set<String> savedTags; // set of saved tags
@@ -12,7 +12,7 @@ public class UserData {
     private Set<String> blockedTags; // set of blocked tags
     // empty constructor for database use
 
-    public UserData() {
+    public User() {
         this.savedBooks = new HashSet<>();
         this.savedTags = new HashSet<>();
         this.blockedBooks = new HashSet<>();
@@ -20,7 +20,7 @@ public class UserData {
     }
 
     // constructor with userId
-    public UserData(String userId) {
+    public User(String userId) {
         this.userId = userId;
         this.savedBooks = new HashSet<>();
         this.savedTags = new HashSet<>();

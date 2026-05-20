@@ -1,18 +1,20 @@
 package com.mybot.utils;
 
 import com.mybot.model.Book;
-import com.mybot.model.UserData;
+import com.mybot.model.User;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class CommandHelper {
 
     // build search query with blocked tags
-    public static String buildFilteredQuery(String keyword, UserData user) {
+    public static String buildFilteredQuery(String keyword, User user) {
         StringBuilder sb = new StringBuilder(keyword);
         for (String tag : user.getBlockedTags()) {
             sb.append(" -tag:\"").append(tag).append("\"");
@@ -32,11 +34,16 @@ public class CommandHelper {
 
     // Embed the result
     public static void embedResult(SlashCommandInteractionEvent event, Book book) {
+
         if (book.isSuccess()) {
             EmbedBuilder embed = new EmbedBuilder();
             embed.setColor(Color.decode("#ED2553"));
             embed.setAuthor("nhentai", book.getUrl(), "https://i.imgur.com/uLAimaY.png");
-            embed.setTitle(book.getTitle(), book.getUrl());
+            String title = book.getTitle();
+            if (title != null && title.length() > 256) {
+                title = title.substring(0, 250) + "...";
+            }
+            embed.setTitle(title, book.getUrl());
 
             String id = extractIdFromUrl(book.getUrl());
             embed.addField("#️⃣ ID", id, true);

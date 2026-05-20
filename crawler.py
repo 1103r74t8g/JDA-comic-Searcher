@@ -44,14 +44,14 @@ def search_nhentai(query):
         
         try:
             search_response = scraper.get(search_url)
-            search_soup = BeautifulSoup(search_response.text, 'html.parser')
+            search_soup = BeautifulSoup(search_response.content, 'html.parser')
             all_results = search_soup.select('.gallery a.cover')
 
             # Fallback 機制 (如果該頁沒東西，退回第 1 頁)
             if not all_results:
                 fallback_url = f"https://nhentai.net/search/?q={quote_plus(search_term)}&page=1{sort_param}"
                 fallback_response = scraper.get(fallback_url)
-                fallback_soup = BeautifulSoup(fallback_response.text, 'html.parser')
+                fallback_soup = BeautifulSoup(fallback_response.content, 'html.parser')
                 all_results = fallback_soup.select('.gallery a.cover')
 
             if all_results:
@@ -73,7 +73,7 @@ def search_nhentai(query):
         response = scraper.get(target_url)
         
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
+            soup = BeautifulSoup(response.content, 'html.parser')
             
             title_tag = soup.select_one('#info h1.title')
             title = title_tag.text.strip() if title_tag else "Unknown Title"
