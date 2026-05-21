@@ -23,6 +23,9 @@ public class SlashCommandHandler {
 
     public void handle(SlashCommandInteractionEvent event) {
         switch (event.getName()) {
+            case "help":
+                help(event);
+                break;
             case "ping":
                 ping(event);
                 break;
@@ -45,6 +48,12 @@ public class SlashCommandHandler {
                 saveList(event);
                 break;
         }
+    }
+
+    // --- Command Implementations ---
+
+    private void help(SlashCommandInteractionEvent event) {
+
     }
 
     private void ping(SlashCommandInteractionEvent event) {
